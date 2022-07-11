@@ -12,7 +12,7 @@ from discord.commands import slash_command, Option
 
 import json, os, time
 
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -124,10 +124,10 @@ for filename in os.listdir("./cmds"):
         client.load_extension(f"cmds.{filename[:-3]}")
 
 
-load_dotenv()
-token = os.getenv("DISCORD_TOKEN")
+#load_dotenv()
+#token = os.getenv("DISCORD_TOKEN")
 passwd = os.getenv("password")
 
 
 if __name__ == "__main__":
-    client.run(token)    
+    client.run(conf["token"])    
