@@ -6,6 +6,8 @@
 #********License: BSD 3-Clause*******#
 #****Develop OS: Ubuntu 20.04 LTS****#
 ######################################
+API = "https://netease-cloud-music-api-murex-gamma.vercel.app/"
+
 import discord
 from discord.ext import commands, bridge
 from discord.ext.bridge.core import BridgeOption
@@ -14,7 +16,7 @@ from discord.utils import get
 from discord import ApplicationCommand, FFmpegPCMAudio
 from youtube_dl import YoutubeDL
 
-import json, time
+import json, time, requests, urllib3
 
 with open("config.json", mode="r", encoding="utf8") as jfile:
     config = json.load(jfile)
@@ -53,6 +55,27 @@ class Music(Cog_Extension):
         else:
             await ctx.respond(f"{ctx.author.mention} 我並不在任何語音頻道中")
 
+    @bridge.bridge_command(name="music_search", description="搜一首歌")
+    async def music_search(self, ctx, songname: BridgeOption(str, "歌曲名称", required=True)="Never Gonna Give You Up"):
+        songlist = []
+        says = ""
+        if songname == None:
+            await ctx.respond("请输入歌名")
+        else:
+            song = requests.get(API + "search?keywords=" + songname + "&limit=12")
+            songs = song.json()
+            result = songs["result"]["songs"]
+            songlist.append("id  |  名称 - 歌手")
+            for i in result:
+                name ="**" + str(i['id']) + "**" + "  |  " + i['name'] + " - " + i['artists'][0]["name"]
+                songlist.append(name)
+            for i in songlist:
+                says = says + i +"\n"
+        
+        if says != "":
+            await ctx.respond("搜索结果:\n"+says)
+        else:
+            await ctx.respond("未搜索到结果")
 
     @bridge.bridge_command(name="play", description="讓機器人播放音樂，目前只能一次播放一首而且只能使用影片網址，音樂功能會在之後的版本再行改善", aliases=["pl"])
     async def play(self, ctx, url: BridgeOption(str, "請將連結貼在這裡", required=False) = None):

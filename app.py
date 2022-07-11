@@ -30,6 +30,9 @@ async def on_ready():
     for guild in client.guilds:
         print(guild.id, guild.name)
     print("------------------------")
+
+    await client.change_presence(activity=discord.Game('c!help'))
+
     
 
 @client.bridge_command(name = "load", description = "Load the Cog_Extension")
