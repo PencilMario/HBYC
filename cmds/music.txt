@@ -6,9 +6,8 @@
 #********License: BSD 3-Clause*******#
 #****Develop OS: Ubuntu 20.04 LTS****#
 ######################################
-from email import header
-import imp
-from winreg import QueryInfoKey
+API = "https://netease-cloud-music-api-murex-gamma.vercel.app/"
+
 import discord
 from discord.ext import commands, bridge
 from discord.ext.bridge.core import BridgeOption
@@ -16,121 +15,29 @@ from core.classes import Cog_Extension
 from discord.utils import get
 from discord import ApplicationCommand, FFmpegPCMAudio
 from youtube_dl import YoutubeDL
-from urllib import parse
+import netease_dl
+import asyncio
+import logging
+import random
 
-import json, time
-import requests
-import os, shutil, asyncio
 
-API = "https://netease-cloud-music-api-murex-gamma.vercel.app"
+import json, time, requests, urllib3
+
+Queue = netease_dl.Queue()
 
 with open("config.json", mode="r", encoding="utf8") as jfile:
     config = json.load(jfile)
-class NQueue:
-    def __init__(self):
-        self.music_list = []
 
-    def is_empty(self):
-        return self.music_list == []
-
-    def enqueue(self, music_info):
-        self.music_list.insert(0, music_info)
-
-    def dequeue(self):
-        return self.music_list.pop()
-
-    def size(self):
-        return len(self.music_list)
-
-    def clear(self):
-        self.music_list.clear()
-
-Queue = NQueue()
-headers={'Connection':'Close',}
 
 class Music(Cog_Extension):
-    def download_music(self, music_id):
-        id = str(music_id)
-        url = API + "/song/url?id=" + id
-        music = requests.get(url,headers=headers)
-        try:
-            getdata = music.json()
-        except Exception:
-            return False
-        file_url = getdata["data"][0]["url"]
-        if file_url == None:
-            return False
-        _music_download = requests.get(file_url,headers=headers)
-        fileName = 'tmp/'+ str(music_id)+'.mp3'
-        # 如果 tmp 文件夹未被创建，则创建 tmp 文件夹
-        if os.path.exists("tmp/") is not True:
-            os.mkdir("tmp/")
-        with open(fileName, 'wb') as music:
-            music.write(_music_download.content)
-        return str(fileName)
-
-    def return_url(self, music_id):
-        id = str(music_id)
-        url = API + "/song/url?id=" + id
-        music = requests.get(url,headers=headers)
-        try:
-            getdata = music.json()
-        except Exception:
-            return False
-        file_url = getdata["data"][0]["url"]
-        return file_url
-
-    # 检测下载可用性
-    def check_downloadable(self, id):
-        id = str(id)
-        url = API + "/song/url?id=" + id
-        music = requests.get(url,headers=headers)
-        try:
-            getdata = music.json()
-        except Exception:
-            return False
-        file_url = getdata["data"][0]["url"]
-        if file_url == None:
-            return False
-        else:
-            return True
-
-    # 获取歌曲信息
-    def get_musicdetail(self, uid):
-        id = str(uid)
-        url = API + "/song/detail?ids=" + id
-        music = requests.get(url,headers=headers)
-        res = music.json()
-        info = {}
-        info["name"] = res["songs"][0]["name"]
-        info["id"] = res["songs"][0]["id"]
-        info["author"] = res["songs"][0]["ar"][0]["name"]
-        try:
-            info["alia"] = res["songs"][0]["alia"][0]
-        except:
-            info["alia"] = ""
-        info["album"] = res["songs"][0]["al"]["name"]
-        info["picurl"] = res["songs"][0]["al"]["picUrl"]
-        return info
-
-    #清理缓存
-    def clean_cache(self):
-        if os.path.exists('tmp'):
-            for fileList in os.walk('tmp'):
-                for name in fileList[2]:
-                    os.chmod(os.path.join(fileList[0], name), stat.S_IWRITE)
-                    os.remove(os.path.join(fileList[0], name))
-                shutil.rmtree('tmp')
-            print("缓存清理完毕")
-
-
-
-    @bridge.bridge_command(name="join", description="讓機器人加入你所在的語音頻道")
+    @bridge.bridge_command(name="join", description="讓機器人加入你所在的語音頻道", aliases=["j"])
     async def join(self, ctx):
         if ctx.author.voice is None:
             return await ctx.respond("請先加入一個語音頻道")
+
         if ctx.voice_client is not None:
             await ctx.voice_client.disconnect()
+
         await ctx.author.voice.channel.connect()
         await ctx.respond(f"已加入`{ctx.author.voice.channel}`")
         print("/join")
@@ -146,12 +53,15 @@ class Music(Cog_Extension):
         if voice.is_connected():
             await voice.disconnect()
             await ctx.respond(f"已離開`{ctx.author.voice.channel}`")
+            #NM
+            if Queue.is_empty() is False:
+                Queue.clear()
+            netease_dl.clean_cache()
             print("/leave")
             print("from", ctx.author.guild.name)
             print("at", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             print("by", ctx.author)
             print("------")
-            self.clean_cache()
 
         else:
             await ctx.respond(f"{ctx.author.mention} 我並不在任何語音頻道中")
@@ -163,10 +73,10 @@ class Music(Cog_Extension):
         if songname == None:
             await ctx.respond("请输入歌名 带空格请用引号包裹")
         else:
-            song = requests.get(API + "/search?keywords=" + parse.quote(songname) + "&limit=12",headers=headers)
+            song = requests.get(API + "search?keywords=" + songname + "&limit=12")
             songs = song.json()
             result = songs["result"]["songs"]
-            songlist.append("id  |  名称 - 歌手\n")
+            songlist.append("id  |  名称 - 歌手")
             for i in result:
                 name ="**" + str(i['id']) + "**" + "  |  " + i['name'] + " - " + i['artists'][0]["name"]
                 songlist.append(name)
@@ -175,13 +85,13 @@ class Music(Cog_Extension):
         if says != "":
             embed = discord.Embed()
             if songname == "Never Gonna Give You Up":
-                says = says + "笨比知道你忘记输入歌名了，所以小小的骗一下也无所谓吧"
+                says.append("笨比知道你忘记输入歌名了，所以小小的骗一下也无所谓吧")
             embed.add_field(name=":musical_note: 搜索结果", value=says, inline=False)
-            embed.set_footer(text="如果使用c!前缀触发指令，而且关键词包含空格，请用\"引号\"包裹")
-            await ctx.respond(embed=embed)
+            embed.set_footer(text="如果关键词包含空格，请用\"引号\"包裹")
+            await ctx.respond(embed)
         else:
-            await ctx.respond("未搜索到结果")   
-    
+            await ctx.respond("未搜索到结果")
+
     @bridge.bridge_command(name="music_play", description="播放指定音乐id")
     async def music_play(self, ctx, uid: BridgeOption(str, "音乐的id", required=False) = None):
         if ctx.voice_client is None:
@@ -189,51 +99,50 @@ class Music(Cog_Extension):
         # print(music_kwords)
         if uid == None:
             embed = discord.Embed(title="None Id", description="请输入正确的ID喵", color=0xeee657)
-            return await ctx.respond(embed=embed)
-        music_info = self.check_downloadable(uid)
-        print("1:Check Downloadable")
+            return await ctx.send(embed=embed)
+        music_info = netease_dl.check_downloadable(uid)
         if music_info == False:
             embed = discord.Embed(title="获取播放链接失败", description="可能为黑胶VIP歌曲或者该歌曲无版权", color=0xeee657)
-            return await ctx.respond(embed=embed)
+            return await ctx.send(embed=embed)
         #正在播放 又有新的歌曲就添加到队列
         if ctx.voice_client.is_playing():
-            Queue.enqueue([music_info,uid])
+            Queue.enqueue(uid)
             print("0：", Queue.music_list)
             return
         #没有播放 直接添加到队列
-        Queue.enqueue([music_info, uid])
+        Queue.enqueue(music_info)
         print("1：",Queue.music_list)
-        voice = get(self.client.voice_clients, guild=ctx.guild)
 
         while True:
             # 等待播放结束
-            while voice.is_playing():
+            while ctx.voice_client.is_playing():
                 await asyncio.sleep(1)
             print("3：", Queue.music_list)
             if Queue.is_empty() is False:
                 music_detail = Queue.dequeue()
+                url = music_detail["url"]
+                musicId = music_detail["musicId"]
+                musicPic = music_detail["musicPic"]
+                musicName = music_detail["musicName"]
+                musicArtists = music_detail["musicArtists"]
                 # global lyric
                 # lyric = music_info['lyric']
                 #播放
-                musicFileName = self.download_music(music_detail[1])
-                print("3:Downloaded")
-                #source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(musicFileName), volume=0.6)
-                info = self.get_musicdetail(music_detail[1])
-                print("3:Get Detailed" + info['name'])
-                embed = discord.Embed(title="正在播放: "+ info['name'], description=info["alia"]) 
-                #if info['alia'] != "":
-                #    embed.add_field(name=info['alia'], value="") 
+                musicFileName = netease_dl.download_music(uid)
+                source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(musicFileName), volume=0.6)
+                info = netease_dl.get_musicdetail(uid)
+                embed = discord.Embed(title="正在播放: "+ info['name']) 
+                if info['alia'] != None:
+                    embed.add_field(name=info['alia']) 
                 embed.add_field(name="歌手", value=info['author'], inline=False) 
                 embed.add_field(name="专辑", value=info['album']) 
                 embed.set_thumbnail(url=info["picurl"])
-                voice.play(discord.FFmpegPCMAudio(musicFileName))
-                voice.is_playing()
+                ctx.voice_client.play(source, after=lambda e: print('Player error: %s' % e) if e else None)
                 await ctx.send(embed=embed)
 
             else:
                 print("2：", Queue.music_list)
                 return
-
 
     @bridge.bridge_command(name="play", description="讓機器人播放音樂，目前只能一次播放一首而且只能使用影片網址，音樂功能會在之後的版本再行改善", aliases=["pl"])
     async def play(self, ctx, url: BridgeOption(str, "請將連結貼在這裡", required=False) = None):
@@ -264,7 +173,7 @@ class Music(Cog_Extension):
                 await ctx.respond(f"{ctx.author.mention}我已經在播音樂了！")
                 return
         
-    
+
     @bridge.bridge_command(name="resume", description="繼續播放原本在播放的音樂")
     async def resume(self, ctx):
         voice = get(self.client.voice_clients, guild=ctx.guild)
@@ -308,7 +217,6 @@ class Music(Cog_Extension):
             print("at", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             print("by", ctx.author)
             print("------")
-            self.clean_cache()
         
         else:
             await ctx.respond(f"{ctx.author.mention} 我根本沒有在播音樂")

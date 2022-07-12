@@ -2,7 +2,6 @@ import os
 import shutil #对os库的补充
 import stat #os 状态
 import requests #requests请求第三方库
-from encode import aesEncrypt, createSecretKey, rsaEncrypt
 import json
 
 
