@@ -6,4 +6,4 @@
 
 ./core/__pycache__
 
-./*.json
+config.json
