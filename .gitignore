@@ -5,3 +5,5 @@
 ./cmds/__pycache__
 
 ./core/__pycache__
+
+./config.json
