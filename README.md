@@ -23,9 +23,9 @@
 
 `music_search <name>` - 搜索一首歌曲 ~~不填会被rickroll~~  
 `music_play [id]` - 播放指定id的歌曲  
-`music_next` - 跳至下一首
-`music_queue` - 查看队列
-`music_remove [id]` - 删除播放队列中指定id的歌曲
+`music_next` - 跳至下一首  
+`music_queue` - 查看队列  
+`music_remove [id]` - 删除播放队列中指定id的歌曲  
 `music_suggest [num] [tag]` - 添加num首标签为tag的歌曲 (使用斜杠指令时可以选择tag)
 
 部分歌曲相关因为HBYC本身自带了YM点歌，所以会冲突，以后再修辣~    
