@@ -6,6 +6,9 @@
 #********License: BSD 3-Clause*******#
 #****Develop OS: Ubuntu 20.04 LTS****#
 ######################################
+channel_id = 995187515013202082
+notice_ban_id = 995576399148634162
+
 import discord
 from discord.ext import commands, bridge
 from discord.commands import slash_command, Option
@@ -16,7 +19,7 @@ import json, os, time
 
 intents = discord.Intents.default()
 intents.message_content = True
-
+intents.members = True
 client = bridge.Bot(command_prefix="c!", intents=intents)
 client.remove_command(name="help")
 
@@ -33,7 +36,29 @@ async def on_ready():
 
     await client.change_presence(activity=discord.Game('c!help'))
 
-    
+@client.event
+async def on_member_join(member):
+    print("Recognised that a member called " + member.name + " joined")
+    embed=discord.Embed(title=f":tada:欢迎 {member.name}", description=f"感谢加入 MAS-CN讨论组!\n在开始聊天之前，请确保您已经阅读 **#守则-rules**") # F-Strings!
+    try:
+        embed.set_thumbnail(url=member.avatar.url)
+    except:
+        pass
+    channel = client.get_channel(channel_id)
+    welcomechannel = await client.fetch_channel(channel_id)
+    await welcomechannel.send(embed=embed)
+
+@client.event
+async def on_member_ban(guilds, member):
+    print("Recognised that a member called " + member.name + " banned")
+    embed=discord.Embed(title=f":tada:喜讯之 **{member.name}**", description=f"被在线的Admin永久封禁，好死喵~") # F-Strings!
+    try:
+        embed.set_thumbnail(url=member.avatar.url)
+    except:
+        pass
+    ban_channel = client.get_channel(notice_ban_id)
+    notice_ban_channel = await client.fetch_channel(notice_ban_id)
+    await notice_ban_channel.send(embed=embed)    
 
 @client.bridge_command(name = "load", description = "Load the Cog_Extension")
 async def load(

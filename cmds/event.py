@@ -6,6 +6,7 @@
 #********License: BSD 3-Clause*******#
 #****Develop OS: Ubuntu 20.04 LTS****#
 ######################################
+import discord
 from discord.ext import commands
 from core.classes import Cog_Extension
 

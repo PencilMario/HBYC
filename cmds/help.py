@@ -31,7 +31,7 @@ class Help(Cog_Extension):
             embed.add_field(name="**指令類別總覽**", value="HBYC的指令類別總覽", inline=False)
             embed.add_field(name="🔵**聊天中心**", value="`say`\n `repeat`\n `thinking`\n", inline=True)
             embed.add_field(name="🔵**音樂中心**", value="`join`\n `play`\n `pause`\n `resume`\n `stop`\n", inline=True)
-            embed.add_field(name="🔵**用戶中心**", value="`avatar`\n `report`\n `ping`\n `presence`\n", inline=True)
+            embed.add_field(name="🔵**用戶中心**", value="`avatar`\n `report`\n `ping`\n `presence`\n`music_help`", inline=True)
             embed.set_footer(icon_url=ctx.author.avatar.url, text=f"{ctx.author} ‧ 使用/help [類別] 或 c!help [類別] 指令可取得更詳細的指令使用方式")
             await ctx.respond(embed=embed)
 
